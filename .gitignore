@@ -1,0 +1,31 @@
+# ==== AI 元文件（禁止上传） ====
+CLAUDE.md
+memory/
+.claude/
+
+# ==== 本地数据（PDF、SQLite） ====
+data/
+*.db
+*.sqlite3
+
+# ==== Python ====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==== Node / 前端 ====
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ==== 编辑器/系统 ====
+.vscode/
+.idea/
+.DS_Store
