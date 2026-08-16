@@ -13,17 +13,18 @@ const EMPTY = {
   tag_ids: [],
 }
 
-// 计算文件夹在树中的深度，用于下拉框缩进
-function folderDepth(folder, folders) {
-  let d = 0
+// 计算文件夹完整路径（如 "lyt / 1"），用于下拉框展示层级
+function folderPath(folder, folders) {
+  const parts = [folder.name]
   let cur = folder
-  while (cur.parent_id != null) {
+  let guard = 0
+  while (cur.parent_id != null && guard++ < 20) {
     const p = folders.find((f) => f.id === cur.parent_id)
     if (!p) break
+    parts.unshift(p.name)
     cur = p
-    d += 1
   }
-  return d
+  return parts.join(' / ')
 }
 
 // paperId 为 null 表示新建，否则为编辑
@@ -217,8 +218,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
                   <option value="">（无）</option>
                   {folders.map((f) => (
                     <option key={f.id} value={f.id}>
-                      {'　'.repeat(folderDepth(f, folders))}
-                      {f.name}
+                      {folderPath(f, folders)}
                     </option>
                   ))}
                 </select>
