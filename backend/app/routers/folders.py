@@ -44,6 +44,17 @@ def update_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="文件夹不存在")
     data = payload.model_dump(exclude_unset=True)
+    new_name = data.get("name")
+    if new_name is not None and new_name != folder.name:
+        existing = db.execute(
+            select(models.Folder).where(
+                models.Folder.name == new_name,
+                models.Folder.parent_id == folder.parent_id,
+                models.Folder.id != folder_id,
+            )
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail="同级文件夹已存在")
     for key, value in data.items():
         setattr(folder, key, value)
     db.commit()
