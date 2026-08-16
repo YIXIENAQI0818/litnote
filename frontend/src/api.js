@@ -22,6 +22,8 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request('/health'),
+  fetchMetadata: (identifier) =>
+    request('/metadata/fetch', { method: 'POST', body: JSON.stringify({ identifier }) }),
 
   // ---- 文献 ----
   listPapers: (params = {}) => {

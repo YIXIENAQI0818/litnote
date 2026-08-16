@@ -36,6 +36,9 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
   const [file, setFile] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const [fetching, setFetching] = useState(false)
+  const [fetchError, setFetchError] = useState('')
 
   // 内联新建文件夹 / 标签
   const [addingFolder, setAddingFolder] = useState(false)
@@ -80,6 +83,30 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
         ? prev.tag_ids.filter((x) => x !== tagId)
         : [...prev.tag_ids, tagId],
     }))
+  }
+
+  async function handleFetch() {
+    const id = identifier.trim()
+    if (!id) return
+    setFetching(true)
+    setFetchError('')
+    try {
+      const m = await api.fetchMetadata(id)
+      setForm((prev) => ({
+        ...prev,
+        title: m.title || prev.title,
+        authors: m.authors || prev.authors,
+        year: m.year == null ? prev.year : String(m.year),
+        venue: m.venue || prev.venue,
+        doi: m.doi || prev.doi,
+        arxiv_id: m.arxiv_id || prev.arxiv_id,
+        abstract: m.abstract || prev.abstract,
+      }))
+    } catch (e) {
+      setFetchError(e.message)
+    } finally {
+      setFetching(false)
+    }
   }
 
   async function createFolder() {
@@ -157,6 +184,36 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
         </div>
 
         <form onSubmit={onSubmit}>
+          <div className="fetch-box">
+            <label>自动补全元数据（DOI / arXiv）</label>
+            <div className="select-row">
+              <input
+                value={identifier}
+                placeholder="如 10.1038/nature12373 或 1706.03762"
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleFetch()
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleFetch}
+                disabled={fetching}
+              >
+                {fetching ? '抓取中…' : '抓取'}
+              </button>
+            </div>
+            {fetchError && (
+              <div style={{ color: 'var(--danger)', marginTop: 4, fontSize: 12 }}>
+                {fetchError}
+              </div>
+            )}
+          </div>
+
           <div className="form-grid">
             <div className="form-field full">
               <label>标题 *</label>

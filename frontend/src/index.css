@@ -560,3 +560,19 @@ button {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ---------- 元数据自动补全 ---------- */
+.fetch-box {
+  border: 1px dashed var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.fetch-box label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+}

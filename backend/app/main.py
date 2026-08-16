@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from . import models  # noqa: F401  确保模型注册到 Base.metadata
 from .db import Base, SessionLocal, engine
-from .routers import folders, notes, papers, tags
+from .routers import folders, metadata, notes, papers, tags
 
 # 首次启动预置的默认笔记分栏
 # 注：「关键词」用标签系统实现（tags），不单独做笔记分栏
@@ -52,6 +52,7 @@ app.include_router(folders.router, prefix="/api")
 app.include_router(tags.router, prefix="/api")
 app.include_router(notes.sections_router, prefix="/api")
 app.include_router(notes.notes_router, prefix="/api")
+app.include_router(metadata.router, prefix="/api")
 
 
 @app.get("/api/health")
