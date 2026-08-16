@@ -21,6 +21,14 @@ def list_folders(db: Session = Depends(get_db)):
 
 @router.post("", response_model=schemas.FolderOut, status_code=201)
 def create_folder(payload: schemas.FolderCreate, db: Session = Depends(get_db)):
+    existing = db.execute(
+        select(models.Folder).where(
+            models.Folder.name == payload.name,
+            models.Folder.parent_id == payload.parent_id,
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=400, detail="同级文件夹已存在")
     folder = models.Folder(name=payload.name, parent_id=payload.parent_id)
     db.add(folder)
     db.commit()

@@ -271,6 +271,13 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
                 onChange={(v) => set('folder_id', v == null ? '' : String(v))}
                 placeholder="（无）"
                 onCreate={async (name) => {
+                  if (
+                    folders.some((f) => f.parent_id == null && f.name === name) ||
+                    pendingFolders.some((f) => f.name === name)
+                  ) {
+                    alert('文件夹已存在')
+                    return null
+                  }
                   const tempId = tempIdRef.current--
                   setPendingFolders((prev) => [...prev, { id: tempId, name }])
                   return tempId

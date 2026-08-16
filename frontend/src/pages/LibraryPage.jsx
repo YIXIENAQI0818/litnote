@@ -266,8 +266,12 @@ export default function LibraryPage() {
   }, [papers, folderIds, tagId, year, q, sortBy])
 
   async function createFolder(name, parentId) {
-    await api.createFolder({ name, parent_id: parentId ?? null })
-    refresh()
+    try {
+      await api.createFolder({ name, parent_id: parentId ?? null })
+      refresh()
+    } catch (e) {
+      alert(e.message)
+    }
   }
 
   async function deleteFolder(id) {
