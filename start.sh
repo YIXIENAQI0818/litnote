@@ -24,5 +24,18 @@ echo "LitNote 已启动：http://localhost:8000"
 echo "（按 Ctrl+C 停止）"
 echo ""
 
+# ---------- 服务就绪后自动打开浏览器 ----------
+open_browser() {
+  sleep 2
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "http://localhost:8000" >/dev/null 2>&1
+  elif command -v open >/dev/null 2>&1; then
+    open "http://localhost:8000" >/dev/null 2>&1
+  elif command -v explorer.exe >/dev/null 2>&1; then
+    explorer.exe "http://localhost:8000" >/dev/null 2>&1
+  fi
+}
+open_browser &
+
 cd backend
 exec .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000

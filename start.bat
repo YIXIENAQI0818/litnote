@@ -36,5 +36,8 @@ echo LitNote 已启动：http://localhost:8000
 echo （按 Ctrl+C 停止）
 echo.
 
+rem ---------- 服务就绪后自动打开浏览器 ----------
+start "" /min powershell -NoProfile -Command "Start-Sleep -Seconds 3; Start-Process 'http://localhost:8000'"
+
 cd backend
 backend\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
