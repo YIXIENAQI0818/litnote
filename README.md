@@ -27,36 +27,33 @@
 
 ## 安装与运行
 
-### 1. 克隆仓库
+### 方式一：一键启动（推荐）
 
 ```bash
-git clone https://github.com/YIXIENAQI0818/litnote.git
-cd litnote
+./start.sh
 ```
 
-> 使用 SSH 方式：`git clone git@github.com:YIXIENAQI0818/litnote.git`
+脚本自动完成：创建虚拟环境并安装依赖 → 构建前端 → 启动服务。浏览器打开 **http://localhost:8000** 即可使用（前端页面与接口同一端口）。
 
-### 2. 启动后端（终端 1）
+> 首次运行需联网安装依赖，之后每次启动约几秒。适用于 macOS / Linux。
+
+### 方式二：分终端（开发模式，前后端热更新）
 
 ```bash
+# 终端 1 —— 后端
 cd backend
 python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload        # http://localhost:8000
-```
 
-接口文档（Swagger UI）：http://localhost:8000/docs
-
-### 3. 启动前端（终端 2）
-
-```bash
+# 终端 2 —— 前端（另开一个终端）
 cd frontend
 npm install
 npm run dev                          # http://localhost:5173
 ```
 
-浏览器打开 **http://localhost:5173** 即可使用。
+接口文档（Swagger UI）：http://localhost:8000/docs
 
 > 首次启动后端会自动建表并预置默认笔记分栏（创新点 / 借鉴内容 / 主要内容 / 结论）。
 
