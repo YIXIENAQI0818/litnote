@@ -20,12 +20,41 @@
 | 后端 | Python 3.12 · FastAPI · SQLAlchemy · SQLite |
 | 前端 | React 18 · Vite · React Router · react-markdown |
 
-## 环境要求
+## 安装
 
-- **Python 3.12+**
-- **Node.js 18+**（含 npm）
+### 1. 前置依赖
 
-## 安装与运行
+- **Python 3.12+**（含 pip）—— [下载](https://www.python.org/downloads/)
+- **Node.js 18+**（含 npm）—— [下载](https://nodejs.org/)
+
+### 2. 克隆仓库
+
+```bash
+git clone https://github.com/YIXIENAQI0818/litnote.git
+cd litnote
+```
+
+> SSH 方式：`git clone git@github.com:YIXIENAQI0818/litnote.git`
+
+### 3. 安装依赖
+
+```bash
+# 后端：创建虚拟环境并安装 Python 依赖
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cd ..
+
+# 前端：安装 npm 依赖
+cd frontend
+npm install
+cd ..
+```
+
+> 若用 `./start.sh` 一键启动，首次运行会自动完成本步骤，可跳过手动安装。
+
+## 运行
 
 ### 方式一：一键启动（推荐）
 
@@ -33,25 +62,24 @@
 ./start.sh
 ```
 
-脚本自动完成：创建虚拟环境并安装依赖 → 构建前端 → 启动服务。浏览器打开 **http://localhost:8000** 即可使用（前端页面与接口同一端口）。
+脚本自动完成：创建虚拟环境并安装依赖（如未安装）→ 构建前端 → 启动服务。浏览器打开 **http://localhost:8000** 即可使用（前端页面与接口同一端口）。
 
 > 首次运行需联网安装依赖，之后每次启动约几秒。适用于 macOS / Linux。
 
-### 方式二：分终端（开发模式，前后端热更新）
+### 方式二：开发模式（前后端热更新）
 
 ```bash
 # 终端 1 —— 后端
 cd backend
-python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
 uvicorn app.main:app --reload        # http://localhost:8000
 
 # 终端 2 —— 前端（另开一个终端）
 cd frontend
-npm install
 npm run dev                          # http://localhost:5173
 ```
+
+> 开发模式假定已完成「安装」章节的第 3 步（依赖已装）。
 
 接口文档（Swagger UI）：http://localhost:8000/docs
 
