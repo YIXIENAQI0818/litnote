@@ -39,6 +39,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
   const [identifier, setIdentifier] = useState('')
   const [fetching, setFetching] = useState(false)
   const [fetchError, setFetchError] = useState('')
+  const [fetchNote, setFetchNote] = useState('')
 
   // 内联新建文件夹 / 标签
   const [addingFolder, setAddingFolder] = useState(false)
@@ -90,6 +91,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
     if (!id) return
     setFetching(true)
     setFetchError('')
+    setFetchNote('')
     try {
       const m = await api.fetchMetadata(id)
       setForm((prev) => ({
@@ -102,6 +104,11 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
         arxiv_id: m.arxiv_id || prev.arxiv_id,
         abstract: m.abstract || prev.abstract,
       }))
+      setFetchNote(
+        m.arxiv_id
+          ? '✓ 已抓取元数据，保存后将自动从 arXiv 下载 PDF'
+          : '✓ 已抓取元数据（DOI 仅提供元数据，PDF 需手动上传）'
+      )
     } catch (e) {
       setFetchError(e.message)
     } finally {
@@ -165,7 +172,15 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
         const created = await api.createPaper(payload)
         paperIdRes = created.id
       }
-      if (file) await api.uploadPdf(paperIdRes, file)
+      if (file) {
+        await api.uploadPdf(paperIdRes, file)
+      } else if (form.arxiv_id.trim()) {
+        try {
+          await api.fetchPdf(paperIdRes) // 自动从 arXiv 下载 PDF
+        } catch (e) {
+          alert(`已保存文献，但自动下载 PDF 失败：${e.message}，可稍后手动上传`)
+        }
+      }
       onSaved(paperIdRes)
     } catch (err) {
       setError(err.message)
@@ -211,6 +226,9 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
               <div style={{ color: 'var(--danger)', marginTop: 4, fontSize: 12 }}>
                 {fetchError}
               </div>
+            )}
+            {!fetchError && fetchNote && (
+              <div style={{ color: '#1a7f37', marginTop: 4, fontSize: 12 }}>{fetchNote}</div>
             )}
           </div>
 

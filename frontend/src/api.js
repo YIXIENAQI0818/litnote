@@ -43,6 +43,7 @@ export const api = {
     fd.append('file', file)
     return request(`/papers/${id}/pdf`, { method: 'POST', body: fd })
   },
+  fetchPdf: (id) => request(`/papers/${id}/fetch-pdf`, { method: 'POST' }),
 
   // ---- 文件夹 ----
   listFolders: () => request('/folders'),

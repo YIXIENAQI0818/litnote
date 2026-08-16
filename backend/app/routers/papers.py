@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 from typing import List, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import or_, select
@@ -135,6 +136,34 @@ async def upload_pdf(
     with dest.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    paper.pdf_path = str(dest)
+    db.commit()
+    return {"paper_id": paper_id, "pdf_path": paper.pdf_path}
+
+
+@router.post("/{paper_id}/fetch-pdf")
+async def fetch_pdf(paper_id: int, db: Session = Depends(get_db)):
+    """从 arXiv 自动下载 PDF（DOI 仅提供元数据，无通用免费 PDF 可下载）。"""
+    paper = db.get(models.Paper, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="文献不存在")
+    if not paper.arxiv_id:
+        raise HTTPException(status_code=400, detail="该文献无 arXiv 号，无法自动下载 PDF（DOI 仅提供元数据）")
+
+    url = f"https://arxiv.org/pdf/{paper.arxiv_id}"
+    try:
+        async with httpx.AsyncClient(timeout=60, trust_env=False, follow_redirects=True) as client:
+            resp = await client.get(
+                url, headers={"User-Agent": "LitNote/0.1 (mailto:1663842668@qq.com)"}
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"下载 PDF 失败：{e}")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"arXiv 返回 {resp.status_code}，下载失败")
+
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    dest = PDF_DIR / f"{paper_id}_{uuid.uuid4().hex}.pdf"
+    dest.write_bytes(resp.content)
     paper.pdf_path = str(dest)
     db.commit()
     return {"paper_id": paper_id, "pdf_path": paper.pdf_path}
