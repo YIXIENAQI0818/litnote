@@ -4,16 +4,18 @@ set -e
 cd "$(dirname "$0")"
 
 # ---------- 后端：虚拟环境 + 依赖 ----------
-if [ ! -d "backend/.venv" ]; then
+if [ ! -x "backend/.venv/bin/python" ]; then
   echo "==> 创建 Python 虚拟环境并安装依赖…"
+  rm -rf backend/.venv
   python3 -m venv backend/.venv
   backend/.venv/bin/pip install --upgrade pip
   backend/.venv/bin/pip install -r backend/requirements.txt
 fi
 
 # ---------- 前端：依赖 + 构建 ----------
-if [ ! -d "frontend/node_modules" ]; then
+if [ ! -e "frontend/node_modules/.bin/vite" ]; then
   echo "==> 安装前端依赖…"
+  rm -rf frontend/node_modules
   (cd frontend && npm install)
 fi
 echo "==> 构建前端…"
