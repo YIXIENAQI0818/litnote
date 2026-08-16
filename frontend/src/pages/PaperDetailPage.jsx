@@ -12,6 +12,49 @@ const SAVE_STATE = {
   error: '保存失败',
 }
 
+// 把 Markdown 中的 ==文字== 渲染为 <mark> 黄色高亮（rehype 插件，作用于 HTML AST）
+function rehypeHighlight() {
+  function splitText(textNode) {
+    const re = /==([^=]+)==/g
+    const value = textNode.value
+    const parts = []
+    let last = 0
+    let match
+    while ((match = re.exec(value))) {
+      if (match.index > last) {
+        parts.push({ type: 'text', value: value.slice(last, match.index) })
+      }
+      parts.push({
+        type: 'element',
+        tagName: 'mark',
+        properties: {},
+        children: [{ type: 'text', value: match[1] }],
+      })
+      last = match.index + match[0].length
+    }
+    if (last < value.length) {
+      parts.push({ type: 'text', value: value.slice(last) })
+    }
+    return parts
+  }
+
+  function walk(node) {
+    if (!node.children) return
+    const next = []
+    for (const child of node.children) {
+      if (child.type === 'text' && child.value.includes('==')) {
+        next.push(...splitText(child))
+      } else {
+        next.push(child)
+        walk(child)
+      }
+    }
+    node.children = next
+  }
+
+  return walk
+}
+
 export default function PaperDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -19,7 +62,7 @@ export default function PaperDetailPage() {
   const [sections, setSections] = useState([])
   const [drafts, setDrafts] = useState({})
   const [saved, setSaved] = useState({})
-  const [noteMode, setNoteMode] = useState('edit') // 'edit' | 'preview'
+  const [noteMode, setNoteMode] = useState('preview') // 'edit' | 'preview'
   const [editing, setEditing] = useState(false)
   const [managing, setManaging] = useState(false)
   const timers = useRef({})
@@ -178,17 +221,17 @@ export default function PaperDetailPage() {
         <div className="segmented">
           <button
             type="button"
-            className={noteMode === 'edit' ? 'active' : ''}
-            onClick={() => setNoteMode('edit')}
-          >
-            编辑
-          </button>
-          <button
-            type="button"
             className={noteMode === 'preview' ? 'active' : ''}
             onClick={() => setNoteMode('preview')}
           >
             预览
+          </button>
+          <button
+            type="button"
+            className={noteMode === 'edit' ? 'active' : ''}
+            onClick={() => setNoteMode('edit')}
+          >
+            编辑
           </button>
         </div>
         <button
@@ -223,7 +266,7 @@ export default function PaperDetailPage() {
           ) : (
             <div className="markdown-body">
               {drafts[s.id] ? (
-                <ReactMarkdown>{drafts[s.id]}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{drafts[s.id]}</ReactMarkdown>
               ) : (
                 <span className="muted">（无内容）</span>
               )}
