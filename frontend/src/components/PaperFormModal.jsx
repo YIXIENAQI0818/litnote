@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import SearchSelect from '../components/SearchSelect.jsx'
 
@@ -41,6 +41,9 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
   const [fetching, setFetching] = useState(false)
   const [fetchError, setFetchError] = useState('')
   const [fetchNote, setFetchNote] = useState('')
+  const [pendingFolders, setPendingFolders] = useState([]) // 本次新建的文件夹（临时负数 id）
+  const [pendingTags, setPendingTags] = useState([]) // 本次新建的关键词（临时负数 id）
+  const tempIdRef = useRef(-1)
 
   async function loadFoldersTags() {
     const [fs, ts] = await Promise.all([api.listFolders(), api.listTags()])
@@ -102,26 +105,6 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
     }
   }
 
-  async function createFolder(name) {
-    try {
-      const f = await api.createFolder({ name, parent_id: null })
-      await loadFoldersTags()
-      set('folder_id', String(f.id)) // 自动选中新建的文件夹
-    } catch (e) {
-      alert(e.message)
-    }
-  }
-
-  async function createTag(name) {
-    try {
-      const t = await api.createTag({ name })
-      await loadFoldersTags()
-      setForm((prev) => ({ ...prev, tag_ids: [...prev.tag_ids, t.id] })) // 自动选中
-    } catch (e) {
-      alert(e.message)
-    }
-  }
-
   async function onSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) {
@@ -130,18 +113,34 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
     }
     setSaving(true)
     setError('')
-    const payload = {
-      title: form.title.trim(),
-      authors: form.authors,
-      venue: form.venue,
-      doi: form.doi,
-      arxiv_id: form.arxiv_id,
-      abstract: form.abstract,
-      year: form.year === '' ? null : Number(form.year),
-      folder_id: form.folder_id === '' ? null : Number(form.folder_id),
-      tag_ids: form.tag_ids,
-    }
     try {
+      // 先落盘本次新建的关键词/文件夹（延迟提交），临时负数 id 映射为真实 id
+      const idMap = new Map()
+      for (const t of pendingTags) {
+        if (form.tag_ids.includes(t.id)) {
+          const real = await api.createTag({ name: t.name })
+          idMap.set(t.id, real.id)
+        }
+      }
+      let folderId = form.folder_id === '' ? null : Number(form.folder_id)
+      for (const f of pendingFolders) {
+        if (folderId === f.id) {
+          const real = await api.createFolder({ name: f.name, parent_id: null })
+          folderId = real.id
+        }
+      }
+
+      const payload = {
+        title: form.title.trim(),
+        authors: form.authors,
+        venue: form.venue,
+        doi: form.doi,
+        arxiv_id: form.arxiv_id,
+        abstract: form.abstract,
+        year: form.year === '' ? null : Number(form.year),
+        folder_id: folderId,
+        tag_ids: form.tag_ids.map((id) => idMap.get(id) ?? id),
+      }
       let paperIdRes
       if (isEdit) {
         await api.updatePaper(paperId, payload)
@@ -264,11 +263,18 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
             <div className="form-field full">
               <label>文件夹</label>
               <SearchSelect
-                options={folders.map((f) => ({ id: f.id, label: folderPath(f, folders) }))}
+                options={[
+                  ...folders.map((f) => ({ id: f.id, label: folderPath(f, folders) })),
+                  ...pendingFolders.map((f) => ({ id: f.id, label: f.name })),
+                ]}
                 value={form.folder_id === '' ? null : Number(form.folder_id)}
                 onChange={(v) => set('folder_id', v == null ? '' : String(v))}
                 placeholder="（无）"
-                onCreate={createFolder}
+                onCreate={async (name) => {
+                  const tempId = tempIdRef.current--
+                  setPendingFolders((prev) => [...prev, { id: tempId, name }])
+                  return tempId
+                }}
                 createLabel="新建文件夹"
                 createPlaceholder="文件夹名"
               />
@@ -278,11 +284,25 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
               <label>关键词（标签）</label>
               <SearchSelect
                 multiple
-                options={tags.map((t) => ({ id: t.id, label: t.name }))}
+                options={[
+                  ...tags.map((t) => ({ id: t.id, label: t.name })),
+                  ...pendingTags.map((t) => ({ id: t.id, label: t.name })),
+                ]}
                 value={form.tag_ids}
                 onChange={(v) => set('tag_ids', v)}
                 placeholder="选择关键词…"
-                onCreate={createTag}
+                onCreate={async (name) => {
+                  if (
+                    tags.some((t) => t.name === name) ||
+                    pendingTags.some((t) => t.name === name)
+                  ) {
+                    alert('关键词已存在')
+                    return null
+                  }
+                  const tempId = tempIdRef.current--
+                  setPendingTags((prev) => [...prev, { id: tempId, name }])
+                  return tempId
+                }}
                 createLabel="新建关键词"
                 createPlaceholder="关键词名"
               />

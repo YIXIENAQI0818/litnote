@@ -67,8 +67,14 @@ export default function SearchSelect({
     setCreating(false)
     setNewName('')
     if (name && onCreate) {
-      await onCreate(name)
-      if (!multiple) setOpen(false)
+      const newId = await onCreate(name)
+      if (newId != null) {
+        if (multiple) onChange([...selectedIds, newId])
+        else {
+          onChange(newId)
+          setOpen(false)
+        }
+      }
     }
   }
 
