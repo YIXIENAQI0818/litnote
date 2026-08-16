@@ -204,6 +204,10 @@ export default function LibraryPage() {
   return (
     <div className="layout">
       <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">L</span>
+          <span className="brand-name">LitNote</span>
+        </div>
         <h3>文献库</h3>
         <div
           className={`row ${folderId == null && tagId == null ? 'active' : ''}`}
@@ -322,6 +326,12 @@ export default function LibraryPage() {
             ＋ 新建文献
           </button>
         </div>
+
+        {!loading && !error && (
+          <div className="list-header">
+            <span>共 {filtered.length} 篇文献</span>
+          </div>
+        )}
 
         {error ? (
           <div className="empty">
