@@ -31,6 +31,11 @@ class TagCreate(BaseModel):
     color: str = ""
 
 
+class TagUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
 class TagOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

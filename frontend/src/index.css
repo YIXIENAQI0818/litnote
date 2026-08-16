@@ -643,6 +643,11 @@ button {
   background: none;
   padding: 0;
 }
+.markdown-body mark {
+  background: none;
+  color: #b91c1c;
+  padding: 0;
+}
 .markdown-body blockquote {
   margin: 8px 0;
   padding: 2px 12px;
@@ -716,4 +721,168 @@ button {
   font-size: 13px;
   font-weight: 500;
   color: var(--accent);
+}
+
+/* ---------- 可搜索下拉（文件夹 / 关键词） ---------- */
+.search-select {
+  position: relative;
+  width: 100%;
+}
+.ss-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  background: #fff;
+}
+.ss-control:hover {
+  border-color: var(--border-strong);
+}
+.ss-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ss-value.placeholder {
+  color: var(--muted);
+}
+.ss-arrow {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ss-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ss-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px 1px 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: 12px;
+}
+.ss-chip button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0 3px;
+  line-height: 1;
+  font-size: 13px;
+}
+.ss-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.ss-search {
+  width: 100%;
+  padding: 8px 11px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font: inherit;
+  font-size: 14px;
+}
+.ss-search:focus {
+  outline: none;
+}
+.ss-options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ss-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.ss-option:hover {
+  background: #f4f6f9;
+}
+.ss-option.selected {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.ss-check {
+  width: 14px;
+  font-size: 12px;
+}
+.ss-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ss-empty {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.ss-create {
+  border-top: 1px solid var(--border);
+  padding: 6px;
+}
+.ss-create input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+}
+.ss-create input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.ss-create-btn {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px dashed var(--border);
+  background: none;
+  border-radius: 7px;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+.ss-create-btn:hover {
+  background: var(--accent-soft);
+}
+
+/* ---------- 行内改名输入框 ---------- */
+.rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+.rename-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }

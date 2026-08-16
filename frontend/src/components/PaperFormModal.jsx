@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import SearchSelect from '../components/SearchSelect.jsx'
 
 const EMPTY = {
   title: '',
@@ -41,12 +42,6 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
   const [fetchError, setFetchError] = useState('')
   const [fetchNote, setFetchNote] = useState('')
 
-  // 内联新建文件夹 / 标签
-  const [addingFolder, setAddingFolder] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [addingTag, setAddingTag] = useState(false)
-  const [newTagName, setNewTagName] = useState('')
-
   async function loadFoldersTags() {
     const [fs, ts] = await Promise.all([api.listFolders(), api.listTags()])
     setFolders(fs)
@@ -75,15 +70,6 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
 
   function set(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  function toggleTag(tagId) {
-    setForm((prev) => ({
-      ...prev,
-      tag_ids: prev.tag_ids.includes(tagId)
-        ? prev.tag_ids.filter((x) => x !== tagId)
-        : [...prev.tag_ids, tagId],
-    }))
   }
 
   async function handleFetch() {
@@ -116,13 +102,9 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
     }
   }
 
-  async function createFolder() {
-    const name = newFolderName.trim()
-    if (!name) return
+  async function createFolder(name) {
     try {
       const f = await api.createFolder({ name, parent_id: null })
-      setNewFolderName('')
-      setAddingFolder(false)
       await loadFoldersTags()
       set('folder_id', String(f.id)) // 自动选中新建的文件夹
     } catch (e) {
@@ -130,15 +112,11 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
     }
   }
 
-  async function createTag() {
-    const name = newTagName.trim()
-    if (!name) return
+  async function createTag(name) {
     try {
       const t = await api.createTag({ name })
-      setNewTagName('')
-      setAddingTag(false)
       await loadFoldersTags()
-      setForm((prev) => ({ ...prev, tag_ids: [...prev.tag_ids, t.id] })) // 自动勾选
+      setForm((prev) => ({ ...prev, tag_ids: [...prev.tag_ids, t.id] })) // 自动选中
     } catch (e) {
       alert(e.message)
     }
@@ -285,82 +263,29 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
 
             <div className="form-field full">
               <label>文件夹</label>
-              <div className="select-row">
-                <select
-                  value={form.folder_id}
-                  onChange={(e) => set('folder_id', e.target.value)}
-                >
-                  <option value="">（无）</option>
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {folderPath(f, folders)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  onClick={() => setAddingFolder(true)}
-                >
-                  ＋ 新建
-                </button>
-              </div>
-              {addingFolder && (
-                <div className="inline-form" style={{ marginTop: 6 }}>
-                  <input
-                    autoFocus
-                    value={newFolderName}
-                    placeholder="新文件夹名"
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        createFolder()
-                      }
-                      if (e.key === 'Escape') setAddingFolder(false)
-                    }}
-                  />
-                </div>
-              )}
+              <SearchSelect
+                options={folders.map((f) => ({ id: f.id, label: folderPath(f, folders) }))}
+                value={form.folder_id === '' ? null : Number(form.folder_id)}
+                onChange={(v) => set('folder_id', v == null ? '' : String(v))}
+                placeholder="（无）"
+                onCreate={createFolder}
+                createLabel="新建文件夹"
+                createPlaceholder="文件夹名"
+              />
             </div>
 
             <div className="form-field full">
               <label>关键词（标签）</label>
-              <div className="tag-picker">
-                {tags.map((t) => (
-                  <span
-                    key={t.id}
-                    className={`tag-option ${form.tag_ids.includes(t.id) ? 'selected' : ''}`}
-                    onClick={() => toggleTag(t.id)}
-                  >
-                    {t.name}
-                  </span>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  onClick={() => setAddingTag(true)}
-                >
-                  ＋ 新建
-                </button>
-              </div>
-              {addingTag && (
-                <div className="inline-form" style={{ marginTop: 6 }}>
-                  <input
-                    autoFocus
-                    value={newTagName}
-                    placeholder="新关键词名"
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        createTag()
-                      }
-                      if (e.key === 'Escape') setAddingTag(false)
-                    }}
-                  />
-                </div>
-              )}
+              <SearchSelect
+                multiple
+                options={tags.map((t) => ({ id: t.id, label: t.name }))}
+                value={form.tag_ids}
+                onChange={(v) => set('tag_ids', v)}
+                placeholder="选择关键词…"
+                onCreate={createTag}
+                createLabel="新建关键词"
+                createPlaceholder="关键词名"
+              />
             </div>
 
             <div className="form-field full">

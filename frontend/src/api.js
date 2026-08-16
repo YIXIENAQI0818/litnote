@@ -54,6 +54,7 @@ export const api = {
   // ---- 标签 ----
   listTags: () => request('/tags'),
   createTag: (data) => request('/tags', { method: 'POST', body: JSON.stringify(data) }),
+  updateTag: (id, data) => request(`/tags/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTag: (id) => request(`/tags/${id}`, { method: 'DELETE' }),
 
   // ---- 笔记分栏 ----

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
@@ -34,8 +34,82 @@ function collectIds(node, acc) {
   node.children.forEach((c) => collectIds(c, acc))
 }
 
-function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete }) {
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+    </svg>
+  )
+}
+
+// 内联创建输入框：失焦/回车提交，Esc 取消，空值视为取消
+function InlineCreate({ placeholder, onDone, style }) {
+  const done = useRef(false)
+  const [value, setValue] = useState('')
+
+  function finish() {
+    if (done.current) return
+    done.current = true
+    onDone(value)
+  }
+
+  return (
+    <div className="inline-form" style={style}>
+      <input
+        autoFocus
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            finish()
+          } else if (e.key === 'Escape') {
+            done.current = true
+            onDone('')
+          }
+        }}
+        onBlur={finish}
+      />
+    </div>
+  )
+}
+
+// 内联改名输入框：失焦/回车提交，Esc 恢复原名
+function InlineRename({ initial, onDone }) {
+  const done = useRef(false)
+  const [value, setValue] = useState(initial)
+
+  function finish() {
+    if (done.current) return
+    done.current = true
+    onDone(value)
+  }
+
+  return (
+    <input
+      className="rename-input"
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          finish()
+        } else if (e.key === 'Escape') {
+          done.current = true
+          onDone(initial)
+        }
+      }}
+      onBlur={finish}
+      onClick={(e) => e.stopPropagation()}
+    />
+  )
+}
+
+function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete, onRename }) {
   const [adding, setAdding] = useState(false)
+  const [renaming, setRenaming] = useState(false)
   return (
     <div>
       <div
@@ -43,42 +117,60 @@ function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete }) {
         style={{ paddingLeft: depth * 16 + 8 }}
         onClick={() => onSelect(node.id)}
       >
-        <span className="name">{node.name}</span>
-        <span className="ops">
-          <button
-            title="新建子文件夹"
-            onClick={(e) => {
-              e.stopPropagation()
-              setAdding(true)
-            }}
-          >
-            +
-          </button>
-          <button
-            title="删除"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(node.id)
-            }}
-          >
-            ×
-          </button>
-        </span>
-      </div>
-      {adding && (
-        <div className="inline-form" style={{ paddingLeft: (depth + 1) * 16 + 8 }}>
-          <input
-            autoFocus
-            placeholder="子文件夹名"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.target.value.trim()) {
-                onCreate(e.target.value.trim(), node.id)
-                setAdding(false)
-              }
-              if (e.key === 'Escape') setAdding(false)
+        {renaming ? (
+          <InlineRename
+            initial={node.name}
+            onDone={(v) => {
+              setRenaming(false)
+              const name = v.trim()
+              if (name && name !== node.name) onRename(node.id, name)
             }}
           />
-        </div>
+        ) : (
+          <>
+            <span className="name">{node.name}</span>
+            <span className="ops">
+              <button
+                title="改名"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setRenaming(true)
+                }}
+              >
+                <PencilIcon />
+              </button>
+              <button
+                title="新建子文件夹"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAdding(true)
+                }}
+              >
+                +
+              </button>
+              <button
+                title="删除"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(node.id)
+                }}
+              >
+                ×
+              </button>
+            </span>
+          </>
+        )}
+      </div>
+      {adding && (
+        <InlineCreate
+          placeholder="子文件夹名"
+          style={{ paddingLeft: (depth + 1) * 16 + 8 }}
+          onDone={(value) => {
+            setAdding(false)
+            const name = value.trim()
+            if (name) onCreate(name, node.id)
+          }}
+        />
       )}
       {node.children.map((c) => (
         <FolderNode
@@ -89,6 +181,7 @@ function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete }) {
           onSelect={onSelect}
           onCreate={onCreate}
           onDelete={onDelete}
+          onRename={onRename}
         />
       ))}
     </div>
@@ -110,6 +203,7 @@ export default function LibraryPage() {
   const [modal, setModal] = useState(null) // null | {type:'create'} | {type:'edit', id}
   const [error, setError] = useState('')
   const [sortBy, setSortBy] = useState('updated') // 'updated' | 'title' | 'year'
+  const [renamingTagId, setRenamingTagId] = useState(null)
 
   async function refresh() {
     setError('')
@@ -195,6 +289,24 @@ export default function LibraryPage() {
     }
   }
 
+  async function renameFolder(id, name) {
+    try {
+      await api.updateFolder(id, { name })
+      refresh()
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
+  async function renameTag(id, name) {
+    try {
+      await api.updateTag(id, { name })
+      refresh()
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
   async function deleteTag(id) {
     if (!window.confirm('确认删除该关键词？将从所有文献上移除')) return
     await api.deleteTag(id)
@@ -226,19 +338,14 @@ export default function LibraryPage() {
           </button>
         </h3>
         {addingRoot && (
-          <div className="inline-form">
-            <input
-              autoFocus
-              placeholder="文件夹名"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.target.value.trim()) {
-                  createFolder(e.target.value.trim(), null)
-                  setAddingRoot(false)
-                }
-                if (e.key === 'Escape') setAddingRoot(false)
-              }}
-            />
-          </div>
+          <InlineCreate
+            placeholder="文件夹名"
+            onDone={(value) => {
+              setAddingRoot(false)
+              const name = value.trim()
+              if (name) createFolder(name, null)
+            }}
+          />
         )}
         {tree.map((n) => (
           <FolderNode
@@ -252,6 +359,7 @@ export default function LibraryPage() {
             }}
             onCreate={createFolder}
             onDelete={deleteFolder}
+            onRename={renameFolder}
           />
         ))}
 
@@ -262,19 +370,14 @@ export default function LibraryPage() {
           </button>
         </h3>
         {addingTag && (
-          <div className="inline-form">
-            <input
-              autoFocus
-              placeholder="关键词名"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.target.value.trim()) {
-                  createTag(e.target.value.trim())
-                  setAddingTag(false)
-                }
-                if (e.key === 'Escape') setAddingTag(false)
-              }}
-            />
-          </div>
+          <InlineCreate
+            placeholder="关键词名"
+            onDone={(value) => {
+              setAddingTag(false)
+              const name = value.trim()
+              if (name) createTag(name)
+            }}
+          />
         )}
         {tags.map((t) => (
           <div
@@ -285,18 +388,40 @@ export default function LibraryPage() {
               setFolderId(null)
             }}
           >
-            <span className="name">{t.name}</span>
-            <span className="ops">
-              <button
-                title="删除"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  deleteTag(t.id)
+            {renamingTagId === t.id ? (
+              <InlineRename
+                initial={t.name}
+                onDone={(v) => {
+                  setRenamingTagId(null)
+                  const name = v.trim()
+                  if (name && name !== t.name) renameTag(t.id, name)
                 }}
-              >
-                ×
-              </button>
-            </span>
+              />
+            ) : (
+              <>
+                <span className="name">{t.name}</span>
+                <span className="ops">
+                  <button
+                    title="改名"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setRenamingTagId(t.id)
+                    }}
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    title="删除"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteTag(t.id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              </>
+            )}
           </div>
         ))}
       </aside>
