@@ -24,8 +24,10 @@
 
 ### 1. 前置依赖
 
-- **Python 3.12+**（含 pip）—— [下载](https://www.python.org/downloads/)
-- **Node.js 18+**（含 npm）—— [下载](https://nodejs.org/)
+需预先安装以下环境（各自官网下载即可）：
+
+- **Python 3.12+**（含 pip）
+- **Node.js 18+**（含 npm）
 
 ### 2. 克隆仓库
 
