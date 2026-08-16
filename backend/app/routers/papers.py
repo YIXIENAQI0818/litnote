@@ -125,6 +125,9 @@ async def upload_pdf(
     if not paper:
         raise HTTPException(status_code=404, detail="文献不存在")
 
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="仅支持上传 PDF 文件")
+
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "").suffix or ".pdf"
     filename = f"{paper_id}_{uuid.uuid4().hex}{ext}"

@@ -108,17 +108,25 @@ export default function LibraryPage() {
   const [addingRoot, setAddingRoot] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [modal, setModal] = useState(null) // null | {type:'create'} | {type:'edit', id}
+  const [error, setError] = useState('')
+  const [sortBy, setSortBy] = useState('updated') // 'updated' | 'title' | 'year'
 
   async function refresh() {
-    const [ps, fs, ts] = await Promise.all([
-      api.listPapers(),
-      api.listFolders(),
-      api.listTags(),
-    ])
-    setPapers(ps)
-    setFolders(fs)
-    setTags(ts)
-    setLoading(false)
+    setError('')
+    try {
+      const [ps, fs, ts] = await Promise.all([
+        api.listPapers(),
+        api.listFolders(),
+        api.listTags(),
+      ])
+      setPapers(ps)
+      setFolders(fs)
+      setTags(ts)
+    } catch {
+      setError('加载失败，请确认后端已启动（uvicorn app.main:app）')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -156,8 +164,12 @@ export default function LibraryPage() {
         if (!hay.includes(needle)) return false
       }
       return true
+    }).sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title, 'zh')
+      if (sortBy === 'year') return (b.year ?? 0) - (a.year ?? 0)
+      return (b.updated_at || '').localeCompare(a.updated_at || '')
     })
-  }, [papers, folderIds, tagId, year, q])
+  }, [papers, folderIds, tagId, year, q, sortBy])
 
   async function createFolder(name, parentId) {
     await api.createFolder({ name, parent_id: parentId ?? null })
@@ -165,6 +177,7 @@ export default function LibraryPage() {
   }
 
   async function deleteFolder(id) {
+    if (!window.confirm('确认删除该文件夹？（需先清空其子文件夹与文献）')) return
     try {
       await api.deleteFolder(id)
       refresh()
@@ -183,6 +196,7 @@ export default function LibraryPage() {
   }
 
   async function deleteTag(id) {
+    if (!window.confirm('确认删除该关键词？将从所有文献上移除')) return
     await api.deleteTag(id)
     refresh()
   }
@@ -299,12 +313,24 @@ export default function LibraryPage() {
               </option>
             ))}
           </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="updated">按更新时间</option>
+            <option value="title">按标题</option>
+            <option value="year">按年份</option>
+          </select>
           <button className="btn btn-primary" onClick={() => setModal({ type: 'create' })}>
             ＋ 新建文献
           </button>
         </div>
 
-        {loading ? (
+        {error ? (
+          <div className="empty">
+            <p>{error}</p>
+            <button className="btn" onClick={refresh}>
+              重试
+            </button>
+          </div>
+        ) : loading ? (
           <div className="loading">加载中…</div>
         ) : filtered.length === 0 ? (
           <div className="empty">没有匹配的文献</div>

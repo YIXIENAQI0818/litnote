@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
+import SectionManagerModal from '../components/SectionManagerModal.jsx'
 
 const SAVE_STATE = {
   dirty: '未保存',
@@ -17,8 +19,11 @@ export default function PaperDetailPage() {
   const [sections, setSections] = useState([])
   const [drafts, setDrafts] = useState({})
   const [saved, setSaved] = useState({})
+  const [noteMode, setNoteMode] = useState('edit') // 'edit' | 'preview'
   const [editing, setEditing] = useState(false)
+  const [managing, setManaging] = useState(false)
   const timers = useRef({})
+  const draftsRef = useRef({})
 
   async function loadAll() {
     const [p, secs, notes] = await Promise.all([
@@ -33,6 +38,7 @@ export default function PaperDetailPage() {
       d[n.section_id] = n.content
     })
     setDrafts(d)
+    draftsRef.current = d
   }
 
   async function loadPaper() {
@@ -41,6 +47,17 @@ export default function PaperDetailPage() {
 
   useEffect(() => {
     loadAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  // 离开页面 / 切换文献时，flush 尚未触发的自动保存，避免丢字
+  useEffect(() => {
+    return () => {
+      Object.entries(timers.current).forEach(([sid, t]) => {
+        clearTimeout(t)
+        api.upsertNote(id, sid, draftsRef.current[sid])
+      })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -54,9 +71,28 @@ export default function PaperDetailPage() {
 
   function onChange(sectionId, value) {
     setDrafts((prev) => ({ ...prev, [sectionId]: value }))
+    draftsRef.current[sectionId] = value
     setSaved((prev) => ({ ...prev, [sectionId]: 'dirty' }))
     clearTimeout(timers.current[sectionId])
     timers.current[sectionId] = setTimeout(() => save(sectionId, value), 600)
+  }
+
+  function onBlur(sectionId) {
+    if (timers.current[sectionId]) {
+      clearTimeout(timers.current[sectionId])
+      delete timers.current[sectionId]
+      save(sectionId, draftsRef.current[sectionId])
+    }
+  }
+
+  // 显式 flush 所有未决保存（打开分栏管理前调用，确保 loadAll 不丢字）
+  async function flushPending() {
+    const tasks = Object.entries(timers.current).map(([sid, t]) => {
+      clearTimeout(t)
+      delete timers.current[sid]
+      return api.upsertNote(id, sid, draftsRef.current[sid])
+    })
+    await Promise.all(tasks)
   }
 
   async function onUploadPdf(e) {
@@ -67,7 +103,6 @@ export default function PaperDetailPage() {
   }
 
   function openPdf() {
-    // 新标签页打开，后端已以 inline 方式返回，浏览器直接内嵌阅读、不下载
     window.open(`/api/papers/${id}/pdf`, '_blank', 'noopener')
   }
 
@@ -138,20 +173,62 @@ export default function PaperDetailPage() {
         </div>
       </div>
 
-      <h2 style={{ margin: '20px 0 12px' }}>笔记</h2>
+      <div className="notes-head">
+        <h2 style={{ margin: 0 }}>笔记</h2>
+        <div className="segmented">
+          <button
+            type="button"
+            className={noteMode === 'edit' ? 'active' : ''}
+            onClick={() => setNoteMode('edit')}
+          >
+            编辑
+          </button>
+          <button
+            type="button"
+            className={noteMode === 'preview' ? 'active' : ''}
+            onClick={() => setNoteMode('preview')}
+          >
+            预览
+          </button>
+        </div>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={async () => {
+            await flushPending()
+            setManaging(true)
+          }}
+        >
+          管理分栏
+        </button>
+      </div>
+
       {sections.map((s) => (
         <div key={s.id} className="section-card">
           <div className="head">
             <span>{s.name}</span>
-            <span className={`save-state ${saved[s.id] === 'saved' ? 'saved' : ''}`}>
-              {SAVE_STATE[saved[s.id]] || ''}
-            </span>
+            {noteMode === 'edit' && (
+              <span className={`save-state ${saved[s.id] === 'saved' ? 'saved' : ''}`}>
+                {SAVE_STATE[saved[s.id]] || ''}
+              </span>
+            )}
           </div>
-          <textarea
-            placeholder={`在「${s.name}」分栏写笔记（支持 Markdown）…`}
-            value={drafts[s.id] ?? ''}
-            onChange={(e) => onChange(s.id, e.target.value)}
-          />
+          {noteMode === 'edit' ? (
+            <textarea
+              placeholder={`在「${s.name}」分栏写笔记（支持 Markdown）…`}
+              value={drafts[s.id] ?? ''}
+              onChange={(e) => onChange(s.id, e.target.value)}
+              onBlur={() => onBlur(s.id)}
+            />
+          ) : (
+            <div className="markdown-body">
+              {drafts[s.id] ? (
+                <ReactMarkdown>{drafts[s.id]}</ReactMarkdown>
+              ) : (
+                <span className="muted">（无内容）</span>
+              )}
+            </div>
+          )}
         </div>
       ))}
 
@@ -163,6 +240,14 @@ export default function PaperDetailPage() {
             setEditing(false)
             loadPaper()
           }}
+        />
+      )}
+
+      {managing && (
+        <SectionManagerModal
+          sections={sections}
+          onClose={() => setManaging(false)}
+          onChanged={loadAll}
         />
       )}
     </div>
