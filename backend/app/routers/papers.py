@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -134,3 +135,15 @@ async def upload_pdf(
     paper.pdf_path = str(dest)
     db.commit()
     return {"paper_id": paper_id, "pdf_path": paper.pdf_path}
+
+
+@router.get("/{paper_id}/pdf")
+def get_pdf(paper_id: int, db: Session = Depends(get_db)):
+    """返回文献的 PDF 文件，供前端 iframe 预览或下载。"""
+    paper = db.get(models.Paper, paper_id)
+    if not paper or not paper.pdf_path:
+        raise HTTPException(status_code=404, detail="该文献没有 PDF")
+    path = Path(paper.pdf_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="PDF 文件缺失")
+    return FileResponse(path, media_type="application/pdf", filename=path.name)
