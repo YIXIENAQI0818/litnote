@@ -146,4 +146,9 @@ def get_pdf(paper_id: int, db: Session = Depends(get_db)):
     path = Path(paper.pdf_path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="PDF 文件缺失")
-    return FileResponse(path, media_type="application/pdf", filename=path.name)
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=path.name,
+        content_disposition_type="inline",  # inline 内嵌显示，attachment 才是下载
+    )
