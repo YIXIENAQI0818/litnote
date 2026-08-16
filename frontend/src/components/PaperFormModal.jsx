@@ -1,0 +1,324 @@
+import { useEffect, useState } from 'react'
+import { api } from '../api.js'
+
+const EMPTY = {
+  title: '',
+  authors: '',
+  year: '',
+  venue: '',
+  doi: '',
+  arxiv_id: '',
+  abstract: '',
+  folder_id: '',
+  tag_ids: [],
+}
+
+// 计算文件夹在树中的深度，用于下拉框缩进
+function folderDepth(folder, folders) {
+  let d = 0
+  let cur = folder
+  while (cur.parent_id != null) {
+    const p = folders.find((f) => f.id === cur.parent_id)
+    if (!p) break
+    cur = p
+    d += 1
+  }
+  return d
+}
+
+// paperId 为 null 表示新建，否则为编辑
+export default function PaperFormModal({ paperId, onClose, onSaved }) {
+  const isEdit = paperId != null
+  const [form, setForm] = useState(EMPTY)
+  const [folders, setFolders] = useState([])
+  const [tags, setTags] = useState([])
+  const [file, setFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  // 内联新建文件夹 / 标签
+  const [addingFolder, setAddingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [addingTag, setAddingTag] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+
+  async function loadFoldersTags() {
+    const [fs, ts] = await Promise.all([api.listFolders(), api.listTags()])
+    setFolders(fs)
+    setTags(ts)
+  }
+
+  useEffect(() => {
+    loadFoldersTags()
+    if (isEdit) {
+      api.getPaper(paperId).then((p) =>
+        setForm({
+          title: p.title,
+          authors: p.authors,
+          year: p.year == null ? '' : String(p.year),
+          venue: p.venue,
+          doi: p.doi,
+          arxiv_id: p.arxiv_id,
+          abstract: p.abstract,
+          folder_id: p.folder_id == null ? '' : String(p.folder_id),
+          tag_ids: p.tags.map((t) => t.id),
+        })
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperId, isEdit])
+
+  function set(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function toggleTag(tagId) {
+    setForm((prev) => ({
+      ...prev,
+      tag_ids: prev.tag_ids.includes(tagId)
+        ? prev.tag_ids.filter((x) => x !== tagId)
+        : [...prev.tag_ids, tagId],
+    }))
+  }
+
+  async function createFolder() {
+    const name = newFolderName.trim()
+    if (!name) return
+    try {
+      const f = await api.createFolder({ name, parent_id: null })
+      setNewFolderName('')
+      setAddingFolder(false)
+      await loadFoldersTags()
+      set('folder_id', String(f.id)) // 自动选中新建的文件夹
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
+  async function createTag() {
+    const name = newTagName.trim()
+    if (!name) return
+    try {
+      const t = await api.createTag({ name })
+      setNewTagName('')
+      setAddingTag(false)
+      await loadFoldersTags()
+      setForm((prev) => ({ ...prev, tag_ids: [...prev.tag_ids, t.id] })) // 自动勾选
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault()
+    if (!form.title.trim()) {
+      setError('标题不能为空')
+      return
+    }
+    setSaving(true)
+    setError('')
+    const payload = {
+      title: form.title.trim(),
+      authors: form.authors,
+      venue: form.venue,
+      doi: form.doi,
+      arxiv_id: form.arxiv_id,
+      abstract: form.abstract,
+      year: form.year === '' ? null : Number(form.year),
+      folder_id: form.folder_id === '' ? null : Number(form.folder_id),
+      tag_ids: form.tag_ids,
+    }
+    try {
+      let paperIdRes
+      if (isEdit) {
+        await api.updatePaper(paperId, payload)
+        paperIdRes = paperId
+      } else {
+        const created = await api.createPaper(payload)
+        paperIdRes = created.id
+      }
+      if (file) await api.uploadPdf(paperIdRes, file)
+      onSaved(paperIdRes)
+    } catch (err) {
+      setError(err.message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2>{isEdit ? '编辑文献' : '新建文献'}</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit}>
+          <div className="form-grid">
+            <div className="form-field full">
+              <label>标题 *</label>
+              <input
+                value={form.title}
+                onChange={(e) => set('title', e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="form-field full">
+              <label>作者</label>
+              <input
+                value={form.authors}
+                onChange={(e) => set('authors', e.target.value)}
+                placeholder="多个作者用逗号分隔"
+              />
+            </div>
+            <div className="form-field">
+              <label>年份</label>
+              <input
+                type="number"
+                value={form.year}
+                onChange={(e) => set('year', e.target.value)}
+                placeholder="2024"
+              />
+            </div>
+            <div className="form-field">
+              <label>会议 / 期刊</label>
+              <input
+                value={form.venue}
+                onChange={(e) => set('venue', e.target.value)}
+                placeholder="NeurIPS / Nature…"
+              />
+            </div>
+            <div className="form-field">
+              <label>DOI</label>
+              <input
+                value={form.doi}
+                onChange={(e) => set('doi', e.target.value)}
+                placeholder="10.xxxx/xxxxx"
+              />
+            </div>
+            <div className="form-field">
+              <label>arXiv ID</label>
+              <input
+                value={form.arxiv_id}
+                onChange={(e) => set('arxiv_id', e.target.value)}
+                placeholder="2401.xxxxx"
+              />
+            </div>
+
+            <div className="form-field full">
+              <label>文件夹</label>
+              <div className="select-row">
+                <select
+                  value={form.folder_id}
+                  onChange={(e) => set('folder_id', e.target.value)}
+                >
+                  <option value="">（无）</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {'　'.repeat(folderDepth(f, folders))}
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => setAddingFolder(true)}
+                >
+                  ＋ 新建
+                </button>
+              </div>
+              {addingFolder && (
+                <div className="inline-form" style={{ marginTop: 6 }}>
+                  <input
+                    autoFocus
+                    value={newFolderName}
+                    placeholder="新文件夹名"
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        createFolder()
+                      }
+                      if (e.key === 'Escape') setAddingFolder(false)
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="form-field full">
+              <label>关键词（标签）</label>
+              <div className="tag-picker">
+                {tags.map((t) => (
+                  <span
+                    key={t.id}
+                    className={`tag-option ${form.tag_ids.includes(t.id) ? 'selected' : ''}`}
+                    onClick={() => toggleTag(t.id)}
+                  >
+                    {t.name}
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => setAddingTag(true)}
+                >
+                  ＋ 新建
+                </button>
+              </div>
+              {addingTag && (
+                <div className="inline-form" style={{ marginTop: 6 }}>
+                  <input
+                    autoFocus
+                    value={newTagName}
+                    placeholder="新关键词名"
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        createTag()
+                      }
+                      if (e.key === 'Escape') setAddingTag(false)
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="form-field full">
+              <label>摘要</label>
+              <textarea value={form.abstract} onChange={(e) => set('abstract', e.target.value)} />
+            </div>
+            <div className="form-field full">
+              <label>PDF 文件</label>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => setFile(e.target.files[0] || null)}
+              />
+              {isEdit && (
+                <span className="muted" style={{ fontSize: 12 }}>
+                  留空则保留现有 PDF
+                </span>
+              )}
+            </div>
+          </div>
+
+          {error && <div style={{ color: 'var(--danger)', marginTop: 12 }}>{error}</div>}
+
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? '保存中…' : '保存'}
+            </button>
+            <button type="button" className="btn" onClick={onClose}>
+              取消
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

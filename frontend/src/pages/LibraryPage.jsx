@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
+import PaperFormModal from '../components/PaperFormModal.jsx'
 
 // 由扁平文件夹列表构建树
 function buildTree(folders) {
@@ -95,6 +96,7 @@ function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete }) {
 }
 
 export default function LibraryPage() {
+  const navigate = useNavigate()
   const [papers, setPapers] = useState([])
   const [folders, setFolders] = useState([])
   const [tags, setTags] = useState([])
@@ -105,6 +107,7 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true)
   const [addingRoot, setAddingRoot] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
+  const [modal, setModal] = useState(null) // null | {type:'create'} | {type:'edit', id}
 
   async function refresh() {
     const [ps, fs, ts] = await Promise.all([
@@ -148,7 +151,8 @@ export default function LibraryPage() {
       if (tagId != null && !p.tags.some((t) => t.id === tagId)) return false
       if (year && p.year !== Number(year)) return false
       if (needle) {
-        const hay = `${p.title} ${p.authors} ${p.abstract} ${p.venue}`.toLowerCase()
+        const keyword = p.tags.map((t) => t.name).join(' ')
+        const hay = `${p.title} ${p.authors} ${p.abstract} ${p.venue} ${keyword}`.toLowerCase()
         if (!hay.includes(needle)) return false
       }
       return true
@@ -199,11 +203,7 @@ export default function LibraryPage() {
 
         <h3>
           文件夹
-          <button
-            className="btn btn-sm"
-            style={{ marginLeft: 8 }}
-            onClick={() => setAddingRoot(true)}
-          >
+          <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={() => setAddingRoot(true)}>
             +
           </button>
         </h3>
@@ -238,12 +238,8 @@ export default function LibraryPage() {
         ))}
 
         <h3>
-          标签
-          <button
-            className="btn btn-sm"
-            style={{ marginLeft: 8 }}
-            onClick={() => setAddingTag(true)}
-          >
+          关键词
+          <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={() => setAddingTag(true)}>
             +
           </button>
         </h3>
@@ -251,7 +247,7 @@ export default function LibraryPage() {
           <div className="inline-form">
             <input
               autoFocus
-              placeholder="标签名"
+              placeholder="关键词名"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.target.value.trim()) {
                   createTag(e.target.value.trim())
@@ -291,7 +287,7 @@ export default function LibraryPage() {
         <div className="toolbar">
           <input
             className="search"
-            placeholder="搜索标题 / 作者 / 摘要 / 会议…"
+            placeholder="搜索标题 / 作者 / 摘要 / 关键词…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -303,9 +299,9 @@ export default function LibraryPage() {
               </option>
             ))}
           </select>
-          <Link to="/papers/new" className="btn btn-primary">
+          <button className="btn btn-primary" onClick={() => setModal({ type: 'create' })}>
             ＋ 新建文献
-          </Link>
+          </button>
         </div>
 
         {loading ? (
@@ -315,7 +311,23 @@ export default function LibraryPage() {
         ) : (
           <div className="paper-list">
             {filtered.map((p) => (
-              <Link key={p.id} to={`/papers/${p.id}`} className="paper-card">
+              <div
+                key={p.id}
+                className="paper-card"
+                onClick={() => navigate(`/papers/${p.id}`)}
+              >
+                <button
+                  className="gear"
+                  title="编辑"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setModal({ type: 'edit', id: p.id })
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.04 7.04 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.65 9.78a.5.5 0 0 0 .12.64l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.23.4.31.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.48 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z" />
+                  </svg>
+                </button>
                 <div className="title">{p.title}</div>
                 <div className="meta">
                   {p.authors && `${p.authors} · `}
@@ -323,7 +335,7 @@ export default function LibraryPage() {
                   {p.venue}
                 </div>
                 {p.tags.length > 0 && (
-                  <div>
+                  <div className="keywords">
                     {p.tags.map((t) => (
                       <span key={t.id} className="chip">
                         {t.name}
@@ -332,11 +344,22 @@ export default function LibraryPage() {
                   </div>
                 )}
                 {p.abstract && <div className="abstract">{p.abstract}</div>}
-              </Link>
+              </div>
             ))}
           </div>
         )}
       </main>
+
+      {modal && (
+        <PaperFormModal
+          paperId={modal.type === 'edit' ? modal.id : null}
+          onClose={() => setModal(null)}
+          onSaved={() => {
+            setModal(null)
+            refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

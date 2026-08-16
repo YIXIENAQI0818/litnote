@@ -346,3 +346,86 @@ button {
   gap: 10px;
   margin-top: 24px;
 }
+
+/* ---------- 弹窗 ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  z-index: 100;
+  overflow-y: auto;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  padding: 20px 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.modal-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.modal-close {
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+.modal-close:hover {
+  color: var(--danger);
+}
+.select-row {
+  display: flex;
+  gap: 8px;
+}
+.select-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- 卡片齿轮按钮 / 关键词 ---------- */
+.paper-card {
+  position: relative;
+  cursor: pointer;
+}
+.paper-card .title {
+  padding-right: 24px;
+}
+.paper-card .gear {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  line-height: 0;
+}
+.paper-card:hover .gear {
+  opacity: 1;
+}
+.paper-card .gear:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.keywords {
+  margin-top: 6px;
+}

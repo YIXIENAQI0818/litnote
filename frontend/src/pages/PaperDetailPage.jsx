@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api.js'
+import PaperFormModal from '../components/PaperFormModal.jsx'
 
 const SAVE_STATE = {
   dirty: '未保存',
@@ -17,9 +18,11 @@ export default function PaperDetailPage() {
   const [drafts, setDrafts] = useState({})
   const [saved, setSaved] = useState({})
   const [showPdf, setShowPdf] = useState(false)
+  const [pdfSrc, setPdfSrc] = useState(null) // 本地 blob URL 或后端 URL
+  const [editing, setEditing] = useState(false)
   const timers = useRef({})
 
-  async function load() {
+  async function loadAll() {
     const [p, secs, notes] = await Promise.all([
       api.getPaper(id),
       api.listSections(),
@@ -32,10 +35,17 @@ export default function PaperDetailPage() {
       d[n.section_id] = n.content
     })
     setDrafts(d)
+    setPdfSrc(p.pdf_path ? `/api/papers/${id}/pdf` : null)
+  }
+
+  async function loadPaper() {
+    const p = await api.getPaper(id)
+    setPaper(p)
+    setPdfSrc(p.pdf_path ? `/api/papers/${id}/pdf` : null)
   }
 
   useEffect(() => {
-    load()
+    loadAll()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -58,6 +68,8 @@ export default function PaperDetailPage() {
     const file = e.target.files[0]
     if (!file) return
     const res = await api.uploadPdf(id, file)
+    // 上传成功后直接用本地 blob 预览，避免再从后端拉一遍
+    setPdfSrc(URL.createObjectURL(file))
     setPaper((prev) => ({ ...prev, pdf_path: res.pdf_path }))
     setShowPdf(true)
   }
@@ -82,7 +94,8 @@ export default function PaperDetailPage() {
             {paper.arxiv_id && <span> · arXiv: {paper.arxiv_id}</span>}
           </div>
           {paper.tags.length > 0 && (
-            <div>
+            <div className="meta-line" style={{ marginTop: 6 }}>
+              <span className="muted">关键词：</span>
               {paper.tags.map((t) => (
                 <span key={t.id} className="chip">
                   {t.name}
@@ -92,9 +105,9 @@ export default function PaperDetailPage() {
           )}
         </div>
         <div className="detail-actions">
-          <Link to={`/papers/${id}/edit`} className="btn">
+          <button className="btn" onClick={() => setEditing(true)}>
             编辑
-          </Link>
+          </button>
           <button className="btn btn-danger" onClick={onDelete}>
             删除
           </button>
@@ -128,9 +141,7 @@ export default function PaperDetailPage() {
         </div>
       </div>
 
-      {showPdf && paper.pdf_path && (
-        <iframe className="pdf-frame" src={`/api/papers/${id}/pdf`} title="PDF 预览" />
-      )}
+      {showPdf && pdfSrc && <iframe className="pdf-frame" src={pdfSrc} title="PDF 预览" />}
 
       <h2 style={{ margin: '20px 0 12px' }}>笔记</h2>
       {sections.map((s) => (
@@ -148,6 +159,17 @@ export default function PaperDetailPage() {
           />
         </div>
       ))}
+
+      {editing && (
+        <PaperFormModal
+          paperId={id}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            loadPaper()
+          }}
+        />
+      )}
     </div>
   )
 }

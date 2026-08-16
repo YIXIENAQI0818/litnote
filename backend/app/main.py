@@ -11,11 +11,12 @@ from .db import Base, SessionLocal, engine
 from .routers import folders, notes, papers, tags
 
 # 首次启动预置的默认笔记分栏
+# 注：「关键词」用标签系统实现（tags），不单独做笔记分栏
 DEFAULT_SECTIONS = [
     ("创新点", 0),
-    ("可借鉴部分", 1),
-    ("结论", 2),
-    ("疑问", 3),
+    ("借鉴内容", 1),
+    ("主要内容", 2),
+    ("结论", 3),
 ]
 
 
