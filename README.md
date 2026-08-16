@@ -54,19 +54,23 @@ npm install
 cd ..
 ```
 
-> 若用 `./start.sh` 一键启动，首次运行会自动完成本步骤，可跳过手动安装。
+> 若用一键启动脚本（macOS / Linux 用 `./start.sh`，Windows 用 `start.bat`），首次运行会自动完成本步骤，可跳过手动安装。
 
 ## 运行
 
 ### 方式一：一键启动（推荐）
 
 ```bash
+# macOS / Linux
 ./start.sh
+
+# Windows（在 cmd 中运行，或直接双击）
+start.bat
 ```
 
 脚本自动完成：创建虚拟环境并安装依赖（如未安装）→ 构建前端 → 启动服务。浏览器打开 **http://localhost:8000** 即可使用（前端页面与接口同一端口）。
 
-> 首次运行需联网安装依赖，之后每次启动约几秒。适用于 macOS / Linux。
+> 首次运行需联网安装依赖，之后每次启动约几秒。macOS / Linux 用 `./start.sh`，Windows 用 `start.bat`（Windows 上也可在 WSL 中继续用 `./start.sh`）。
 
 ### 方式二：开发模式（前后端热更新）
 
