@@ -17,8 +17,6 @@ export default function PaperDetailPage() {
   const [sections, setSections] = useState([])
   const [drafts, setDrafts] = useState({})
   const [saved, setSaved] = useState({})
-  const [showPdf, setShowPdf] = useState(false)
-  const [pdfSrc, setPdfSrc] = useState(null) // 本地 blob URL 或后端 URL
   const [editing, setEditing] = useState(false)
   const timers = useRef({})
 
@@ -35,13 +33,10 @@ export default function PaperDetailPage() {
       d[n.section_id] = n.content
     })
     setDrafts(d)
-    setPdfSrc(p.pdf_path ? `/api/papers/${id}/pdf` : null)
   }
 
   async function loadPaper() {
-    const p = await api.getPaper(id)
-    setPaper(p)
-    setPdfSrc(p.pdf_path ? `/api/papers/${id}/pdf` : null)
+    setPaper(await api.getPaper(id))
   }
 
   useEffect(() => {
@@ -67,11 +62,13 @@ export default function PaperDetailPage() {
   async function onUploadPdf(e) {
     const file = e.target.files[0]
     if (!file) return
-    const res = await api.uploadPdf(id, file)
-    // 上传成功后直接用本地 blob 预览，避免再从后端拉一遍
-    setPdfSrc(URL.createObjectURL(file))
-    setPaper((prev) => ({ ...prev, pdf_path: res.pdf_path }))
-    setShowPdf(true)
+    await api.uploadPdf(id, file)
+    loadPaper()
+  }
+
+  function openPdf() {
+    // 新标签页打开，后端已以 inline 方式返回，浏览器直接内嵌阅读、不下载
+    window.open(`/api/papers/${id}/pdf`, '_blank', 'noopener')
   }
 
   async function onDelete() {
@@ -128,8 +125,8 @@ export default function PaperDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <strong>PDF</strong>
           {paper.pdf_path ? (
-            <button className="btn btn-sm" onClick={() => setShowPdf((v) => !v)}>
-              {showPdf ? '隐藏预览' : '预览'}
+            <button className="btn btn-sm" onClick={openPdf}>
+              打开 PDF
             </button>
           ) : (
             <span className="muted">尚未上传</span>
@@ -140,8 +137,6 @@ export default function PaperDetailPage() {
           </label>
         </div>
       </div>
-
-      {showPdf && pdfSrc && <iframe className="pdf-frame" src={pdfSrc} title="PDF 预览" />}
 
       <h2 style={{ margin: '20px 0 12px' }}>笔记</h2>
       {sections.map((s) => (
