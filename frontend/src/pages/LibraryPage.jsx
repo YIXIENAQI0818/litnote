@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 // 由扁平文件夹列表构建树
 function buildTree(folders) {
@@ -190,6 +191,7 @@ function FolderNode({ node, depth, selectedId, onSelect, onCreate, onDelete, onR
 
 export default function LibraryPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [papers, setPapers] = useState([])
   const [folders, setFolders] = useState([])
   const [tags, setTags] = useState([])
@@ -270,7 +272,7 @@ export default function LibraryPage() {
       await api.createFolder({ name, parent_id: parentId ?? null })
       refresh()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -280,7 +282,7 @@ export default function LibraryPage() {
       await api.deleteFolder(id)
       refresh()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -289,7 +291,7 @@ export default function LibraryPage() {
       await api.createTag({ name })
       refresh()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -298,7 +300,7 @@ export default function LibraryPage() {
       await api.updateFolder(id, { name })
       refresh()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -307,7 +309,7 @@ export default function LibraryPage() {
       await api.updateTag(id, { name })
       refresh()
     } catch (e) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 

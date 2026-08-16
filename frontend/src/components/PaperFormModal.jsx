@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import SearchSelect from '../components/SearchSelect.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 const EMPTY = {
   title: '',
@@ -31,6 +32,7 @@ function folderPath(folder, folders) {
 // paperId 为 null 表示新建，否则为编辑
 export default function PaperFormModal({ paperId, onClose, onSaved }) {
   const isEdit = paperId != null
+  const toast = useToast()
   const [form, setForm] = useState(EMPTY)
   const [folders, setFolders] = useState([])
   const [tags, setTags] = useState([])
@@ -155,7 +157,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
         try {
           await api.fetchPdf(paperIdRes) // 自动从 arXiv 下载 PDF
         } catch (e) {
-          alert(`已保存文献，但自动下载 PDF 失败：${e.message}，可稍后手动上传`)
+          toast.error(`已保存文献，但自动下载 PDF 失败：${e.message}，可稍后手动上传`)
         }
       }
       onSaved(paperIdRes)
@@ -275,7 +277,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
                     folders.some((f) => f.parent_id == null && f.name === name) ||
                     pendingFolders.some((f) => f.name === name)
                   ) {
-                    alert('文件夹已存在')
+                    toast.error('文件夹已存在')
                     return null
                   }
                   const tempId = tempIdRef.current--
@@ -303,7 +305,7 @@ export default function PaperFormModal({ paperId, onClose, onSaved }) {
                     tags.some((t) => t.name === name) ||
                     pendingTags.some((t) => t.name === name)
                   ) {
-                    alert('关键词已存在')
+                    toast.error('关键词已存在')
                     return null
                   }
                   const tempId = tempIdRef.current--
