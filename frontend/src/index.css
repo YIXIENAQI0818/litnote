@@ -621,6 +621,9 @@ button {
 .markdown-body p {
   margin: 1.7em 0;
 }
+.markdown-body > :first-child {
+  margin-top: 0;
+}
 .markdown-body ul,
 .markdown-body ol {
   margin: 6px 0;
