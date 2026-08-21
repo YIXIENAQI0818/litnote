@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import ConfirmDialog from './ConfirmDialog.jsx'
 
 // 管理笔记分栏：增删、重命名、排序
 export default function SectionManagerModal({ sections, onClose, onChanged }) {
   const [list, setList] = useState([])
   const [newName, setNewName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   useEffect(() => {
     setList(sections.map((s) => ({ id: s.id, name: s.name })))
@@ -26,7 +28,6 @@ export default function SectionManagerModal({ sections, onClose, onChanged }) {
   }
 
   async function remove(item) {
-    if (!window.confirm(`删除分栏「${item.name}」？其下所有文献的该栏笔记会一并删除。`)) return
     await api.deleteSection(item.id)
     setList((prev) => prev.filter((x) => x.id !== item.id))
   }
@@ -42,90 +43,104 @@ export default function SectionManagerModal({ sections, onClose, onChanged }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h2>管理笔记分栏</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
+    <>
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head">
+            <h2>管理笔记分栏</h2>
+            <button type="button" className="modal-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
 
-        <div className="section-manager-list">
-          {list.map((item, i) => (
-            <div key={item.id} className="section-manager-row">
-              <span className="muted" style={{ width: 20, textAlign: 'center' }}>
-                {i + 1}
-              </span>
-              <input
-                defaultValue={item.name}
-                onBlur={(e) => rename(item, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.target.blur()
-                }}
-              />
-              <span className="row-ops">
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  disabled={i === 0}
-                  onClick={() => move(i, -1)}
-                  title="上移"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  disabled={i === list.length - 1}
-                  onClick={() => move(i, 1)}
-                  title="下移"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger"
-                  onClick={() => remove(item)}
-                  title="删除"
-                >
-                  ×
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
+          <div className="section-manager-list">
+            {list.map((item, i) => (
+              <div key={item.id} className="section-manager-row">
+                <span className="muted" style={{ width: 20, textAlign: 'center' }}>
+                  {i + 1}
+                </span>
+                <input
+                  defaultValue={item.name}
+                  onBlur={(e) => rename(item, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.target.blur()
+                  }}
+                />
+                <span className="row-ops">
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={i === 0}
+                    onClick={() => move(i, -1)}
+                    title="上移"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={i === list.length - 1}
+                    onClick={() => move(i, 1)}
+                    title="下移"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    onClick={() => setPendingDelete(item)}
+                    title="删除"
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
 
-        <div className="inline-form" style={{ marginTop: 12 }}>
-          <input
-            value={newName}
-            placeholder="新分栏名，如「复现方法」"
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                add()
-              }
-            }}
-          />
-          <button type="button" className="btn btn-primary btn-sm" onClick={add}>
-            添加
-          </button>
-        </div>
+          <div className="inline-form" style={{ marginTop: 12 }}>
+            <input
+              value={newName}
+              placeholder="新分栏名，如「复现方法」"
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  add()
+                }
+              }}
+            />
+            <button type="button" className="btn btn-primary btn-sm" onClick={add}>
+              添加
+            </button>
+          </div>
 
-        <div className="form-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              onChanged()
-              onClose()
-            }}
-          >
-            完成
-          </button>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                onChanged()
+                onClose()
+              }}
+            >
+              完成
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="删除分栏"
+          message={`删除分栏「${pendingDelete.name}」？其下所有文献的该栏笔记会一并删除。`}
+          onConfirm={() => {
+            remove(pendingDelete)
+            setPendingDelete(null)
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+    </>
   )
 }

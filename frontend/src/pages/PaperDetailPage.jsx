@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
 import SectionManagerModal from '../components/SectionManagerModal.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
 const SAVE_STATE = {
   dirty: '未保存',
@@ -65,6 +66,7 @@ export default function PaperDetailPage() {
   const [noteMode, setNoteMode] = useState('preview') // 'edit' | 'preview'
   const [editing, setEditing] = useState(false)
   const [managing, setManaging] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const timers = useRef({})
   const draftsRef = useRef({})
 
@@ -150,7 +152,6 @@ export default function PaperDetailPage() {
   }
 
   async function onDelete() {
-    if (!window.confirm('确认删除这篇文献及其全部笔记？')) return
     await api.deletePaper(id)
     navigate('/')
   }
@@ -183,7 +184,7 @@ export default function PaperDetailPage() {
           <button className="btn" onClick={() => setEditing(true)}>
             编辑
           </button>
-          <button className="btn btn-danger" onClick={onDelete}>
+          <button className="btn btn-danger" onClick={() => setConfirmingDelete(true)}>
             删除
           </button>
           <Link to="/" className="btn">
@@ -291,6 +292,15 @@ export default function PaperDetailPage() {
           sections={sections}
           onClose={() => setManaging(false)}
           onChanged={loadAll}
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="删除文献"
+          message="确认删除这篇文献及其全部笔记？此操作不可恢复。"
+          onConfirm={onDelete}
+          onCancel={() => setConfirmingDelete(false)}
         />
       )}
     </div>

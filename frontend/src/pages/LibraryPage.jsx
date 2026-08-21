@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useToast } from '../components/Toast.jsx'
 
 // 由扁平文件夹列表构建树
@@ -206,6 +207,7 @@ export default function LibraryPage() {
   const [error, setError] = useState('')
   const [sortBy, setSortBy] = useState('updated') // 'updated' | 'title' | 'year'
   const [renamingTagId, setRenamingTagId] = useState(null)
+  const [confirm, setConfirm] = useState(null) // {kind:'folder'|'tag', id}
 
   async function refresh() {
     setError('')
@@ -276,8 +278,11 @@ export default function LibraryPage() {
     }
   }
 
-  async function deleteFolder(id) {
-    if (!window.confirm('确认删除该文件夹？（需先清空其子文件夹与文献）')) return
+  function askDeleteFolder(id) {
+    setConfirm({ kind: 'folder', id })
+  }
+
+  async function doDeleteFolder(id) {
     try {
       await api.deleteFolder(id)
       refresh()
@@ -313,8 +318,11 @@ export default function LibraryPage() {
     }
   }
 
-  async function deleteTag(id) {
-    if (!window.confirm('确认删除该关键词？将从所有文献上移除')) return
+  function askDeleteTag(id) {
+    setConfirm({ kind: 'tag', id })
+  }
+
+  async function doDeleteTag(id) {
     await api.deleteTag(id)
     refresh()
   }
@@ -364,7 +372,7 @@ export default function LibraryPage() {
               setTagId(null)
             }}
             onCreate={createFolder}
-            onDelete={deleteFolder}
+            onDelete={askDeleteFolder}
             onRename={renameFolder}
           />
         ))}
@@ -420,7 +428,7 @@ export default function LibraryPage() {
                     title="删除"
                     onClick={(e) => {
                       e.stopPropagation()
-                      deleteTag(t.id)
+                      askDeleteTag(t.id)
                     }}
                   >
                     ×
@@ -525,6 +533,24 @@ export default function LibraryPage() {
             setModal(null)
             refresh()
           }}
+        />
+      )}
+
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.kind === 'folder' ? '删除文件夹' : '删除关键词'}
+          message={
+            confirm.kind === 'folder'
+              ? '确认删除该文件夹？（需先清空其子文件夹与文献）'
+              : '确认删除该关键词？将从所有文献上移除'
+          }
+          onConfirm={async () => {
+            const { kind, id } = confirm
+            setConfirm(null)
+            if (kind === 'folder') await doDeleteFolder(id)
+            else await doDeleteTag(id)
+          }}
+          onCancel={() => setConfirm(null)}
         />
       )}
     </div>
