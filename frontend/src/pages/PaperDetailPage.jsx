@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import remarkBreaks from 'remark-breaks'
 import { api } from '../api.js'
 import PaperFormModal from '../components/PaperFormModal.jsx'
 import SectionManagerModal from '../components/SectionManagerModal.jsx'
@@ -267,7 +266,7 @@ export default function PaperDetailPage() {
           ) : (
             <div className="markdown-body">
               {drafts[s.id] ? (
-                <ReactMarkdown remarkPlugins={[remarkBreaks]} rehypePlugins={[rehypeHighlight]}>{drafts[s.id]}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{drafts[s.id]}</ReactMarkdown>
               ) : (
                 <span className="muted">（无内容）</span>
               )}
