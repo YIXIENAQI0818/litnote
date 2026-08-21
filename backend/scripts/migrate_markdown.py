@@ -24,6 +24,8 @@
     python3 backend/scripts/migrate_markdown.py --db 路径        # 指定数据库
     python3 backend/scripts/migrate_markdown.py --dry-run       # 只预览，不写库
 
+    Windows 下把 ``python3`` 换成 ``python``（取决于 Python 安装方式）。
+
 安全
 ----
 - 运行前自动备份数据库到 ``<db>.bak-<时间戳>``；
@@ -50,6 +52,8 @@ def migrate(content: str) -> tuple[str, int, int]:
     """返回 (迁移后的内容, 迁移的分段数, 迁移的换行数)。"""
     if not content:
         return content, 0, 0
+    # Windows 防御：万一笔记里混入 CRLF/CR 换行，先统一归一化为 LF。
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
     # 幂等保护：已含反斜杠硬换行，视为已迁移。
     if "\\\n" in content:
         return content, 0, 0
